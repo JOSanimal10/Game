@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0915">
+  <title>Iron Circuit — Tank Arena</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preload" href="assets/lancer-cover.webp" as="image">
+  <link rel="preload" href="assets/scatter-cover.webp" as="image">
+  <script defer src="loadouts.js"></script>
+  <script defer src="career.js"></script>
+  <script defer src="progression.js"></script>
+  <script defer src="encounters.js"></script>
+  <script defer src="arena-content.js"></script>
+  <script defer src="game.js"></script>
+  <script defer src="guide.js"></script>
+</head>
+<body>
+<main id="arena" data-state="menu" aria-label="Iron Circuit tank arena">
+  <canvas id="field" aria-label="Tank battlefield"></canvas>
+
+  <section id="lobby" class="lobby" aria-labelledby="game-title">
+    <div class="lobby-art">
+      <img id="tank-preview" src="assets/arena-cover.webp" width="1536" height="1024" alt="Vanguard tank on a violet deployment pad." fetchpriority="high">
+    </div>
+    <div class="lobby-layout">
+      <div class="intro">
+        <p class="mode-label">Solo survival</p>
+        <h1 id="game-title">Iron <span>Circuit</span></h1>
+        <p class="lead">Choose your tank, evolve it in battle, and survive elite waves and bosses.</p>
+        <div class="loadout">
+          <label>Tank class<select id="tank-class" aria-describedby="tank-help tank-stats"></select></label>
+          <label>Active ability<select id="ability-select" aria-describedby="ability-help ability-timing ability-control"></select></label>
+          <div class="loadout-preview">
+            <img id="tank-preview-mobile" src="assets/arena-cover.webp" width="1536" height="1024" alt="Vanguard tank on a violet deployment pad.">
+          </div>
+          <p id="tank-help" class="loadout-explanation"></p>
+          <div class="loadout-explanation">
+            <p id="ability-help"></p>
+            <p id="ability-timing" class="ability-timing"></p>
+            <p id="ability-control">Press Q or tap the ability button in play.</p>
+          </div>
+          <dl id="tank-stats" class="tank-stats" aria-label="Starting tank stats"></dl>
+          <label>Difficulty<select id="difficulty" aria-describedby="difficulty-help"></select></label>
+          <p id="difficulty-help"></p>
+          <label class="touch-option lobby-touch-option">
+            <input id="touch-aim" type="checkbox">
+            <span>Auto aim &amp; fire<small>Move with one thumb. Drag the right side for manual aim.</small></span>
+          </label>
+        </div>
+        <div class="lobby-actions">
+          <button id="launch" class="primary" type="button"><span class="play-icon" aria-hidden="true"></span> Play now</button>
+          <div class="record">
+            <span class="label">Personal best</span>
+            <strong id="lobby-best">0</strong>
+          </div>
+        </div>
+        <div class="lobby-links">
+          <button id="open-shop" type="button" class="hud-button guide-button">Daily &amp; shop</button>
+          <button type="button" class="hud-button guide-button" data-open-guide>Field guide</button>
+          <details class="pilot-options">
+            <summary>Settings &amp; unlocks</summary>
+            <div class="pilot-options-body">
+              <div class="finish-picker">
+                <label>Tank skin <select id="tank-finish"></select></label>
+                <canvas id="finish-preview" width="114" height="70" aria-label="Selected skin preview"></canvas>
+              </div>
+              <label><input id="screen-shake" type="checkbox"> Screen shake</label>
+              <ul id="unlock-list" class="unlock-list"></ul>
+            </div>
+          </details>
+        </div>
+      </div>
+      <ul class="controls keyboard-controls" aria-label="Game controls">
+        <li><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span> Move</li>
+        <li><kbd>Mouse</kbd> Aim &amp; fire</li>
+        <li><kbd>P</kbd> Pause</li>
+        <li><kbd>Q</kbd> Ability</li>
+      </ul>
+      <ul class="controls touch-controls" aria-label="Touch controls">
+        <li><span class="gesture">Drag left side</span> Move</li>
+        <li><span class="gesture">Drag right side</span> Aim &amp; fire</li>
+        <li>Tap your ability in the center</li>
+      </ul>
+    </div>
+  </section>
+
+  <header class="hud">
+    <div class="wordmark"><span class="brand-mark" aria-hidden="true"></span> Iron Circuit</div>
+    <div class="match glass" id="match" hidden>
+      <span class="wave-label">Wave <strong id="wave">01</strong></span>
+      <span id="remaining">6 hostiles</span>
+      <span id="wave-rule" hidden></span>
+    </div>
+    <div class="hud-actions">
+      <button id="sound" class="hud-button" type="button" aria-label="Sound" aria-pressed="false" title="Sound off">
+        <span class="sound-icon" aria-hidden="true"></span>
+        <span id="sound-label" aria-hidden="true">Sound off</span>
+      </button>
+      <button id="pause" class="hud-button" type="button" aria-label="Pause" title="Pause (P)" hidden>
+        <span class="pause-icon" aria-hidden="true"></span>
+      </button>
+    </div>
+  </header>
+
+  <section id="boss-hud" class="boss-hud glass" aria-label="Boss status" hidden>
+    <div class="boss-heading"><strong id="boss-name"></strong><span id="boss-level" class="label"></span></div>
+    <div id="boss-meter" class="track" role="progressbar" aria-label="Boss hull" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="boss-health"></div></div>
+    <p id="boss-attack"></p>
+    <div class="track boss-windup"><div id="boss-windup"></div></div>
+  </section>
+  <div id="notice" class="notice" role="status"></div>
+  <section id="contract" class="contract glass" aria-label="Optional contract" hidden>
+    <strong id="contract-name"></strong>
+    <span id="contract-info"></span>
+    <button id="accept-contract" class="hud-button" type="button">Accept<span class="contract-key"> · E</span></button>
+  </section>
+  <button id="ability-button" class="ability-button glass" type="button" hidden><span id="ability-name"></span><strong id="ability-ready"></strong></button>
+  <div id="touch-pad-hints" class="touch-pad-hints" aria-hidden="true" hidden>
+    <span class="touch-pad touch-pad-move"><span class="touch-pad-icon"></span>Move</span>
+    <span class="touch-pad touch-pad-aim"><span class="touch-pad-icon"></span><span id="touch-aim-label">Aim &amp; fire</span></span>
+  </div>
+
+  <div id="combat-hud" class="combat-hud" hidden>
+    <aside class="points glass" aria-label="Run score">
+      <div class="stat"><span class="label">Score</span><strong id="score">0</strong></div>
+      <div class="stat"><span class="label">Best</span><strong id="best">0</strong></div>
+    </aside>
+    <section id="tank-status" class="status glass" aria-label="Tank status">
+      <div class="meterline"><span class="label">Hull</span><strong id="hull" title="Current hull, maximum hull, and any bonus shield">100 / 100</strong></div>
+      <div class="track"><div id="health"></div></div>
+      <div class="meterline"><span id="level" class="label">Level 1</span><strong id="xp-label">0 / 110 XP</strong></div>
+      <div class="track xp"><div id="xp"></div></div>
+      <p id="run-coins" hidden></p>
+    </section>
+    <aside class="map glass" aria-label="Minimap">
+      <div class="map-title label">Radar</div>
+      <canvas id="radar" width="280" height="172" aria-label="Enemy and player positions"></canvas>
+    </aside>
+  </div>
+
+  <div id="overlay" class="overlay" hidden>
+    <section class="dialog" role="dialog" aria-labelledby="headline" aria-describedby="description">
+      <p id="eyebrow" class="mode-label" hidden></p>
+      <h2 id="headline"></h2>
+      <p id="description" hidden></p>
+      <details id="build-stats" class="build-stats" hidden>
+        <summary>Tank stats</summary>
+        <dl id="build-stats-list" class="tank-stats" aria-label="Current tank stats"></dl>
+      </details>
+      <button type="button" class="hud-button guide-button overlay-guide-button" data-open-guide>Field guide</button>
+      <div id="paths" class="paths" role="group" aria-label="Upgrade paths" hidden></div>
+      <div id="choices" class="choices" hidden></div>
+      <dl id="run-summary" class="run-summary" hidden>
+        <div><dt class="label">Wave</dt><dd id="final-wave">1</dd></div>
+        <div><dt class="label">Level</dt><dd id="final-level">1</dd></div>
+        <div><dt class="label">Score</dt><dd id="final-score">0</dd></div>
+        <div><dt class="label">Best</dt><dd id="final-best">0</dd></div>
+        <div><dt class="label">Tanks defeated</dt><dd id="final-kills">0</dd></div>
+        <div><dt class="label">Damage dealt</dt><dd id="final-damage">0</dd></div>
+        <div><dt class="label">Bosses</dt><dd id="final-bosses">0</dd></div>
+        <div><dt class="label">Contracts</dt><dd id="final-contracts">0</dd></div>
+      </dl>
+      <div id="final-build" class="final-build" hidden>
+        <p id="final-loadout"></p>
+        <p id="final-cause"></p>
+        <p id="final-coins"></p>
+        <p id="final-unlocks"></p>
+        <details id="build-details">
+          <summary>View build</summary>
+          <dl id="final-build-stats" class="tank-stats" aria-label="Final tank stats"></dl>
+          <ul id="build-list"></ul>
+        </details>
+      </div>
+      <label id="pause-controls" class="pause-controls" hidden><input id="pause-shake" type="checkbox"> Screen shake</label>
+      <label id="pause-touch-controls" class="touch-option pause-touch-option" hidden>
+        <input id="pause-touch-aim" type="checkbox"> Auto aim &amp; fire
+      </label>
+      <button id="primary" class="primary" type="button" hidden><span class="play-icon" aria-hidden="true"></span><span id="primary-label"></span></button>
+      <button id="return-lobby" class="hud-button return-lobby" type="button" hidden>Change loadout</button>
+    </section>
+  </div>
+  <dialog id="field-guide" class="library-dialog" aria-labelledby="guide-title">
+    <div class="guide-header">
+      <div class="guide-titlebar">
+        <h2 id="guide-title">Field guide</h2>
+        <button id="guide-close" class="hud-button" type="button" autofocus>Close</button>
+      </div>
+      <nav id="guide-sections" class="guide-sections" aria-label="Guide sections"></nav>
+      <label class="guide-search">Search this section <input id="guide-search" type="search" autocomplete="off"></label>
+    </div>
+    <div id="guide-body" class="guide-body">
+      <p id="guide-intro"></p>
+      <div id="guide-cards" class="guide-cards"></div>
+      <p id="guide-empty" role="status" hidden>No matches in this section.</p>
+    </div>
+  </dialog>
+  <dialog id="career-shop" class="library-dialog" aria-labelledby="shop-title">
+    <div class="guide-header">
+      <div class="guide-titlebar">
+        <h2 id="shop-title">Daily &amp; shop</h2>
+        <button id="shop-close" class="hud-button" type="button" autofocus>Close</button>
+      </div>
+      <p id="shop-wallet" role="status"></p>
+    </div>
+    <div class="guide-body shop-body">
+      <section class="daily-card" aria-labelledby="daily-title">
+        <h3 id="daily-title">Daily challenge</h3>
+        <p id="daily-objective"></p>
+        <progress id="daily-progress" aria-label="Daily challenge progress"></progress>
+        <p id="daily-reward"></p>
+      </section>
+      <div id="shop-cards"></div>
+    </div>
+  </dialog>
+</main>
+</body>
+</html>
